@@ -1,25 +1,88 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
+title: "Coursera - Reproducible Week 2"
+author: "Stephen van Gaal"
+date: '2017-02-17'
 output: 
-  html_document:
-    keep_md: true
+  html_document: 
+    self_contained: no
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
 
-## Loading and preprocessing the data
+1. Read the data
 
+``` {r}
+file <- "./activity.csv"
+data <- read.csv(file)
+data$date <- as.Date(as.character(data$date))
+```
 
+2. Average number of steps
 
-## What is mean total number of steps taken per day?
+```{r}
+dailystep <- aggregate(steps~date,data=data,sum)
+dailyplot <- ggplot(data=dailystep,aes(x=steps)) +
+  geom_histogram()+
+  xlab("number of steps")+
+  ylab("count of days")+
+  ggtitle("histogram of number of steps")
+dailyplot
+mean(dailystep$steps)
+median(dailystep$steps)
+```
 
+3. Daily pattern
 
+```{r}
+diurnalstep <- aggregate(steps~interval,data=data,mean)
+diurnalplot <- ggplot(data=diurnalstep,aes(x=interval,y=steps))+
+  geom_line()+
+  xlab("interval-time")+
+  ylab("average number of steps")+
+  ggtitle("time series - average steps by time interval")
+diurnalplot
+print("Interval with highest number of steps")
+diurnalstep[which.max(diurnalstep$steps),]
+```
 
-## What is the average daily activity pattern?
+4. Missing values
 
+```{r}
+missing <- is.na(data$steps) # Vector containing the indices of cases missing steps
+imputed <- data # Create a copy of the data set
+imputed$steps[missing] <- diurnalstep[match(imputed$interval[missing],diurnalstep$interval),2]
+# At each case with missing value, impute the value from the matching time of day
 
+dailystep.imp <- aggregate(steps~date,data=imputed, sum)
+dailyplot.imp <- ggplot(data=dailystep.imp,aes(x=steps)) +
+  geom_histogram()+
+  xlab("number of steps")+
+  ylab("count of days")+
+  ggtitle("histogram of number of steps")
+dailyplot.imp
+mean(dailystep.imp$steps)
+median(dailystep.imp$steps)
 
-## Imputing missing values
+# Test if the mean with imputed values is greater than the mean of observed values
+mean(dailystep.imp$steps) > mean(dailystep$steps)
+# Test if the median with imputed values is greater than the median of observed values
+median(dailystep.imp$steps) > median(dailystep$steps)
+```
 
+5. Weekday vs. Weekend
 
+```{r}
+data$weekend <- as.factor(ifelse(weekdays(data$date) %in% c("Saturday","Sunday"),"Weekend","Weekday"))
+diurnalstep.wk <- aggregate(steps~interval+weekend,data=data,mean)
+diurnalplot.wk <- ggplot(data=diurnalstep.wk,aes(x=interval,y=steps))+
+  geom_line()+
+  xlab("interval-time")+
+  ylab("average number of steps")+
+  ggtitle("time series - average steps by time interval")+
+  facet_grid(.~weekend)
+diurnalplot.wk
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
